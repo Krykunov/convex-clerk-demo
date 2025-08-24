@@ -1,14 +1,33 @@
 'use client';
 
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DollarSign, TrendingUp, Users, Activity } from 'lucide-react';
+import UserSync from './UserSync';
+import { useState } from 'react';
 
 export default function Dashboard() {
   const messages = useQuery(api.messages.getForCurrentUser);
+  const currentUser = useQuery(api.users.getCurrentUser);
+  const allUsers = useQuery(api.users.getAllUsers);
+  const createMessage = useMutation(api.messages.createMessage);
+  const [isCreatingMessage, setIsCreatingMessage] = useState(false);
+
+  const handleCreateTestMessage = async () => {
+    setIsCreatingMessage(true);
+    try {
+      await createMessage({
+        content: `Test message created at ${new Date().toLocaleTimeString()}`,
+      });
+    } catch (error) {
+      console.error('Failed to create message:', error);
+    } finally {
+      setIsCreatingMessage(false);
+    }
+  };
 
   const stats = [
     {
@@ -19,9 +38,9 @@ export default function Dashboard() {
       color: 'text-green-600',
     },
     {
-      title: 'Active Users',
-      value: '2,350',
-      change: '+180.1% from last month',
+      title: 'Total Users',
+      value: allUsers?.length?.toString() || '0',
+      change: 'Registered users',
       icon: Users,
       color: 'text-blue-600',
     },
@@ -43,9 +62,12 @@ export default function Dashboard() {
 
   return (
     <div className='container mx-auto px-4 py-8'>
+      {/* UserSync component to sync Clerk user with Convex */}
+      <UserSync />
+
       <div className='mb-8'>
         <h1 className='text-3xl font-bold text-gray-900 mb-2'>Dashboard</h1>
-        <p className='text-gray-600'>Welcome to your Get Rich demo dashboard!</p>
+        <p className='text-gray-600'>Welcome to your Get Rich demo dashboard{currentUser?.firstName ? `, ${currentUser.firstName}` : ''}!</p>
       </div>
 
       {/* Stats Grid */}
@@ -95,8 +117,8 @@ export default function Dashboard() {
             <CardDescription>Common tasks and shortcuts</CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
-            <Button className='w-full' variant='default'>
-              Add New Item
+            <Button className='w-full' variant='default' onClick={handleCreateTestMessage} disabled={isCreatingMessage}>
+              {isCreatingMessage ? 'Creating...' : 'Create Test Message'}
             </Button>
             <Button className='w-full' variant='outline'>
               Generate Report
@@ -121,14 +143,26 @@ export default function Dashboard() {
           <CardDescription>Real-time data from your Convex backend</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className='flex items-center justify-between p-4 bg-gray-50 rounded-lg'>
-            <div>
-              <p className='font-medium'>Messages in Database</p>
-              <p className='text-sm text-gray-500'>Connected to your Convex deployment</p>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            <div className='flex items-center justify-between p-4 bg-gray-50 rounded-lg'>
+              <div>
+                <p className='font-medium'>Messages in Database</p>
+                <p className='text-sm text-gray-500'>Connected to your Convex deployment</p>
+              </div>
+              <div className='text-right'>
+                <p className='text-2xl font-bold text-blue-600'>{messages?.length || 0}</p>
+                <p className='text-xs text-gray-500'>Total messages</p>
+              </div>
             </div>
-            <div className='text-right'>
-              <p className='text-2xl font-bold text-blue-600'>{messages?.length || 0}</p>
-              <p className='text-xs text-gray-500'>Total messages</p>
+            <div className='flex items-center justify-between p-4 bg-blue-50 rounded-lg'>
+              <div>
+                <p className='font-medium'>User Profile</p>
+                <p className='text-sm text-gray-500'>{currentUser ? `${currentUser.email}` : 'Loading...'}</p>
+              </div>
+              <div className='text-right'>
+                <p className='text-2xl font-bold text-green-600'>{currentUser ? '✓' : '...'}</p>
+                <p className='text-xs text-gray-500'>Synced</p>
+              </div>
             </div>
           </div>
         </CardContent>
